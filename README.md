@@ -24,4 +24,7 @@ no dependencies, no backend. Progress/stats live in `localStorage`.
 ## Run / deploy
 
     cd site && python3 -m http.server 8765     # then open http://localhost:8765
-    npx wrangler deploy                         # from this directory
+    npx wrangler deploy                         # manual deploy, from this directory
+
+Pushing to `main` on GitHub (`hirak1984/puzzles`) redeploys automatically via Cloudflare Workers Builds
+(deploy command `npx wrangler deploy`, no build step).
