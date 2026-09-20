@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hirakonline-puzzles",
+  "compatibility_date": "2026-06-10",
+  "assets": {
+    "directory": "site"
+  },
+  "routes": [
+    { "pattern": "puzzles.hirakonline.com", "custom_domain": true }
+  ]
+}
