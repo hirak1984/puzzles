@@ -1,5 +1,5 @@
 import { svgEl, store, svgPoint } from './common.js';
-import { generate, status, blocked } from './hashi.js';
+import { generate, status, blocked, validEdge } from './hashi.js';
 
 const C = 40; // cell size in SVG units
 
@@ -38,6 +38,16 @@ export function mount(ctx) {
     svg.replaceChildren();
     // faint grid dots
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) svgEl('circle', { cx: x * C + C / 2, cy: y * C + C / 2, r: 1.5, class: 'dot' }, svg);
+    // Paths the selected island can still use (nothing crossing, neither end full).
+    if (selected !== null) {
+      for (const k of model.adj[selected]) {
+        if (!validEdge(model, vals, st.sums, k)) continue;
+        const e = edges[k];
+        svgEl('line', { x1: cx(e.a), y1: cy(e.a), x2: cx(e.b), y2: cy(e.b), class: 'path-hl' }, svg);
+        const o = e.a === selected ? e.b : e.a;
+        svgEl('circle', { cx: cx(o), cy: cy(o), r: 19, class: 'target' }, svg);
+      }
+    }
     edges.forEach((e, k) => {
       const x1 = cx(e.a), y1 = cy(e.a), x2 = cx(e.b), y2 = cy(e.b);
       if (hint === k) svgEl('line', { x1, y1, x2, y2, class: 'hint-line' }, svg);
@@ -54,12 +64,6 @@ export function mount(ctx) {
       const t = svgEl('text', { x: cx(i), y: cy(i) + 0.5, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g);
       t.textContent = is.n;
     });
-    if (selected !== null) {
-      for (const k of model.adj[selected]) {
-        const o = edges[k].a === selected ? edges[k].b : edges[k].a;
-        svgEl('circle', { cx: cx(o), cy: cy(o), r: 19, class: 'target' }, svg);
-      }
-    }
     if (st.solved && !solved) {
       solved = true;
       save();
@@ -127,7 +131,8 @@ export function mount(ctx) {
       if (selected === null || selected === i) selected = selected === i ? null : i;
       else {
         const k = edgeBetween(selected, i);
-        if (k >= 0) { cycle(k); selected = null; } else selected = i;
+        const sums = status(model, vals).sums;
+        if (k >= 0 && validEdge(model, vals, sums, k)) { cycle(k); selected = null; } else selected = i;
       }
     } else if (d.edge >= 0 && !moved) {
       cycle(d.edge);

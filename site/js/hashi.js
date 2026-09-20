@@ -4,7 +4,7 @@ import { mulberry32, randInt, shuffle } from './rng.js';
 export const LEVELS = {
   easy: { w: 7, h: 7, islands: 10, extra: 0.15, dbl: 0.3 },
   medium: { w: 9, h: 9, islands: 18, extra: 0.25, dbl: 0.35 },
-  hard: { w: 11, h: 11, islands: 30, extra: 0.3, dbl: 0.4 },
+  hard: { w: 12, h: 16, islands: 48, extra: 0.3, dbl: 0.4 },
 };
 
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -196,4 +196,14 @@ export function status(model, vals) {
 // True if placing a bridge on edge k would cross an existing one.
 export function blocked(model, vals, k) {
   return model.crosses[k].some((c) => vals[c] > 0);
+}
+
+// Can the player usefully put (or keep) a bridge on edge k right now? True if
+// it already carries a bridge (so it can be doubled/removed), or if nothing
+// crosses it and neither end island is already full.
+export function validEdge(model, vals, sums, k) {
+  if (vals[k] > 0) return true;
+  if (blocked(model, vals, k)) return false;
+  const e = model.edges[k];
+  return sums[e.a] < model.islands[e.a].n && sums[e.b] < model.islands[e.b].n;
 }

@@ -100,8 +100,9 @@ button.primary:hover{filter:brightness(1.08)}
 .hashi .island.done text{fill:var(--accent)}
 .hashi .island.over circle{fill:var(--danger-bg);stroke:var(--danger)}
 .hashi .island.over text{fill:var(--danger)}
-.hashi .island.sel circle{stroke-width:4;stroke:var(--accent)}
-.hashi .target{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:4 4;pointer-events:none}
+.hashi .island.sel circle{stroke-width:3;stroke:var(--accent);fill:var(--accent-bg)}
+.hashi .path-hl{stroke:var(--accent);stroke-width:14;stroke-linecap:round;opacity:.28;pointer-events:none}
+.hashi .target{fill:none;stroke:var(--accent);stroke-width:2;pointer-events:none}
 
 /* Tracks */
 .tracks .cell{fill:var(--bg-elevated)}
