@@ -29,7 +29,9 @@ all three. The app repo's `CLAUDE.md` has the rule and the iOS ⇄ Android ⇄ W
 - A puzzle is fully determined by `(game, level, seed)` — the URL is shareable. Without a seed in the
   URL, the level's in-progress puzzle is resumed (as in the apps); "New puzzle" abandons it.
 - Generators only emit puzzles the solver proves to have exactly one solution
-  (Hashi: constraint-propagating DFS; Tracks: clue-pruned path enumeration, givens added until unique).
+  (Hashi: constraint-propagating DFS; Tracks: clue-pruned path enumeration, givens added until unique;
+  Sudoku: random full grid, then cells removed while a bitmask backtracking solver still finds exactly
+  one solution, down to 38/30/24 givens for easy/medium/hard).
   If a rare seed fails to produce one, the UI shows a notice.
 - Tracks `hard` can take ~0.5–3 s to generate on the main thread (shows "Generating…").
 - Adding a game: add logic + `*-ui.js` exporting `mount(ctx)` → `{undo, reset, hint, destroy, save}`, then register it in `GAMES` in `app.js`.
