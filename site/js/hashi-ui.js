@@ -5,7 +5,7 @@ const C = 40; // cell size in SVG units
 
 export function mount(ctx) {
   const { board, level, seed } = ctx;
-  const key = `puzzles:hashi:${level}:${seed}`;
+  const { key } = ctx;
   const puz = generate(seed, level);
   const { model, solution } = puz;
   const { w, h, islands, edges } = model;
@@ -14,8 +14,10 @@ export function mount(ctx) {
   let history = [];
   let selected = null;
   let hint = null;
+  let hintWrong = false; // the hinted bridge shouldn't be there (drawn red)
   let hintTimer = 0;
   let solved = false;
+  let shownDisconnected = false;
 
   const saved = store.get(key);
   if (saved && saved.vals?.length === vals.length) {
@@ -50,7 +52,7 @@ export function mount(ctx) {
     }
     edges.forEach((e, k) => {
       const x1 = cx(e.a), y1 = cy(e.a), x2 = cx(e.b), y2 = cy(e.b);
-      if (hint === k) svgEl('line', { x1, y1, x2, y2, class: 'hint-line' }, svg);
+      if (hint === k) svgEl('line', { x1, y1, x2, y2, class: 'hint-line' + (hintWrong ? ' wrong' : '') }, svg);
       const n = vals[k];
       for (let i = 0; i < n; i++) {
         const off = n === 1 ? 0 : (i === 0 ? -3.5 : 3.5);
@@ -59,7 +61,7 @@ export function mount(ctx) {
       }
     });
     islands.forEach((is, i) => {
-      const g = svgEl('g', { class: 'island' + (st.over[i] ? ' over' : st.done[i] ? ' done' : '') + (selected === i ? ' sel' : '') }, svg);
+      const g = svgEl('g', { class: 'island' + (st.over[i] || st.isolated[i] ? ' over' : st.done[i] ? ' done' : '') + (selected === i ? ' sel' : '') }, svg);
       svgEl('circle', { cx: cx(i), cy: cy(i), r: 15 }, g);
       const t = svgEl('text', { x: cx(i), y: cy(i) + 0.5, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g);
       t.textContent = is.n;
@@ -71,13 +73,32 @@ export function mount(ctx) {
     }
   }
 
+  // Cycles an edge 0 → 1 → 2 → 0, skipping any step that would push either
+  // end island past its number (so a "1" is never offered a double).
   function cycle(k) {
     if (solved) return;
     if (blocked(model, vals, k) && vals[k] === 0) { ctx.toast('A bridge would cross there'); return; }
+    const e = edges[k];
+    const sums = status(model, vals).sums;
+    const cur = vals[k];
+    const exceeds = (v) => sums[e.a] - cur + v > islands[e.a].n || sums[e.b] - cur + v > islands[e.b].n;
+    let next = (cur + 1) % 3;
+    while (next !== 0 && exceeds(next)) next = (next + 1) % 3;
+    if (next === cur) { ctx.toast('That island already has enough bridges'); return; }
     history.push(vals.slice());
-    vals[k] = (vals[k] + 1) % 3;
+    vals[k] = next;
     hint = null;
     save();
+    checkDisconnected();
+  }
+
+  // Every island's count matches but the bridges form 2+ separate networks:
+  // say so once (the stray islands also turn red) instead of looking finished.
+  function checkDisconnected() {
+    const st = status(model, vals);
+    const disconnected = st.done.every(Boolean) && !st.solved;
+    if (disconnected && !shownDisconnected) ctx.toast("All counts match, but the islands aren't fully connected");
+    shownDisconnected = disconnected;
   }
 
   function edgeBetween(a, b) {
@@ -156,6 +177,7 @@ export function mount(ctx) {
       history.push(vals.slice());
       vals = vals.map(() => 0);
       selected = null;
+      shownDisconnected = false;
       save();
       render();
     },
@@ -166,6 +188,7 @@ export function mount(ctx) {
       if (k < 0) k = vals.findIndex((v, i) => v < solution[i]);
       if (k < 0) return;
       hint = k;
+      hintWrong = vals[k] > solution[k];
       clearTimeout(hintTimer);
       hintTimer = setTimeout(() => { hint = null; render(); }, 2500);
       ctx.toast(vals[k] > solution[k] ? 'This bridge is wrong' : 'A bridge belongs here');

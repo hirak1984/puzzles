@@ -1,4 +1,4 @@
-import { store, fmtTime, getStats, recordSolve } from './common.js';
+import { store, fmtTime, getStats, recordSolve, progressKey, lastLevel, setCurrentSeed, resumableSeed, randomSeed } from './common.js';
 
 const GAMES = {
   hashi: {
@@ -27,6 +27,18 @@ const GAMES = {
     load: () => import('./tracks-ui.js'),
     icon: '<svg viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="10" stroke-dasharray="2.5 5" opacity=".55"><path d="M8 20H32Q48 20 48 36V56"/></g><g fill="none" stroke="currentColor" stroke-width="4"><path d="M8 20H32Q48 20 48 36V56"/></g><g fill="none" stroke="var(--bg-elevated)" stroke-width="1.6"><path d="M8 20H32Q48 20 48 36V56"/></g></svg>',
   },
+  sudoku: {
+    title: 'Sudoku',
+    blurb: 'Fill the grid so every row, column and box holds 1–9.',
+    rules: [
+      'Fill every empty square with a digit from 1 to 9.',
+      'Each row, each column, and each 3×3 box must contain every digit exactly once — no repeats.',
+      'Tap a square, then tap a number below to fill it. Tap the same number again to clear it.',
+      'Given squares are shaded and locked — they can\'t be changed.',
+    ],
+    load: () => import('./sudoku-ui.js'),
+    icon: '<svg viewBox="0 0 64 64"><g stroke="currentColor" stroke-width="1.5" opacity=".55"><path d="M27.33 18V46M36.67 18V46M18 27.33H46M18 36.67H46"/></g><rect x="18" y="18" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"/><g fill="currentColor" font-size="11" font-weight="700" text-anchor="middle" dominant-baseline="central"><text x="22.67" y="22.67">5</text><text x="41.33" y="32">3</text><text x="32" y="41.33">8</text></g></svg>',
+  },
 };
 const LEVELS = ['easy', 'medium', 'hard'];
 
@@ -40,6 +52,7 @@ function parseRoute() {
 
 function teardown() {
   if (current) {
+    current.save?.(); // keep the elapsed time when leaving / switching level
     current.destroy?.();
     current.timerId && clearInterval(current.timerId);
     current = null;
@@ -65,7 +78,7 @@ function renderHome() {
   const stats = getStats();
   app.innerHTML = `
     <div class="home">
-      <p class="page-intro">Two logic puzzles, generated fresh every time.</p>
+      <p class="page-intro">Three logic puzzles, generated fresh every time.</p>
       <p class="lede">No ads, no accounts — progress stays on this device.</p>
       <div class="cards">
         ${Object.entries(GAMES).map(([id, g]) => {
@@ -82,11 +95,14 @@ function renderHome() {
 
 async function renderGame({ game, level, seed }) {
   const g = GAMES[game];
-  if (!LEVELS.includes(level)) level = store.get(`puzzles:level:${game}`, 'easy');
-  if (!/^\d+$/.test(seed || '')) seed = String(Math.floor(Math.random() * 1e6));
+  if (!LEVELS.includes(level)) level = lastLevel.get(game);
+  if (!LEVELS.includes(level)) level = 'easy';
+  // An explicit seed (a shared link) wins; otherwise resume this level's open puzzle.
+  if (!/^\d+$/.test(seed || '')) seed = String(resumableSeed(game, level));
   const want = `#/${game}/${level}/${seed}`;
   if (location.hash !== want) { history.replaceState(null, '', want); }
-  store.set(`puzzles:level:${game}`, level);
+  lastLevel.set(game, level);
+  setCurrentSeed(game, level, Number(seed));
   document.title = `${g.title} — Puzzles`;
 
   const stats = getStats()[game]?.[level];
@@ -115,19 +131,25 @@ async function renderGame({ game, level, seed }) {
   let elapsed = 0;
   const timerEl = document.getElementById('timer');
   const timer = { get: () => elapsed, set: (s) => { elapsed = s; timerEl.textContent = fmtTime(s); } };
-  const newPuzzle = () => { location.hash = `#/${game}/${level}/${Math.floor(Math.random() * 1e6)}`; };
-  const state = { timerId: null, destroy: null };
+  const state = { timerId: null, destroy: null, discard: false };
+  // Abandons the current puzzle (its saved progress is dropped, as in the apps).
+  const newPuzzle = () => {
+    state.discard = true;
+    store.del(progressKey(game, level, seed));
+    location.hash = `#/${game}/${level}/${randomSeed()}`;
+  };
   current = state;
   state.timerId = setInterval(() => {
     if (document.hidden) return;
     elapsed++;
     timerEl.textContent = fmtTime(elapsed);
-    if (elapsed % 5 === 0) ctrl?.save?.();
+    if (elapsed % 5 === 0) state.save();
   }, 1000);
+  state.save = () => { if (!state.discard) ctrl?.save?.(); };
 
   let ctrl = null;
   const ctx = {
-    board: document.getElementById('board'), level, seed: Number(seed), timer, toast,
+    board: document.getElementById('board'), level, seed: Number(seed), key: progressKey(game, level, seed), timer, toast,
     onSolved() {
       clearInterval(state.timerId);
       const l = recordSolve(game, level, elapsed);
@@ -141,7 +163,6 @@ async function renderGame({ game, level, seed }) {
   const mod = await g.load();
   ctrl = mod.mount(ctx);
   state.destroy = () => ctrl.destroy?.();
-  state.save = () => ctrl.save?.();
   timerEl.textContent = fmtTime(elapsed);
 
   document.getElementById('undo').onclick = () => ctrl.undo();
@@ -173,7 +194,7 @@ route();
     dark: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M13 9.5A5.5 5.5 0 0 1 6.5 3 5.5 5.5 0 1 0 13 9.5z"/></svg>',
     system: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="14" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="12" x2="8" y2="14"/></svg>',
   };
-  const getTheme = () => { try { return localStorage.getItem('puzzles-theme') || 'system'; } catch { return 'system'; } };
+  const getTheme = () => { try { return localStorage.getItem('puzzles.theme') || 'system'; } catch { return 'system'; } };
   function applyTheme(t) {
     const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -187,7 +208,7 @@ route();
     btn.innerHTML = ICONS[current];
     btn.addEventListener('click', () => {
       const next = STATES[(STATES.indexOf(getTheme()) + 1) % STATES.length];
-      try { localStorage.setItem('puzzles-theme', next); } catch {}
+      try { localStorage.setItem('puzzles.theme', next); } catch {}
       applyTheme(next);
       render(next);
     });

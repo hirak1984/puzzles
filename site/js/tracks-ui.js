@@ -5,7 +5,7 @@ const C = 44;
 
 export function mount(ctx) {
   const { board, level, seed } = ctx;
-  const key = `puzzles:tracks:${level}:${seed}`;
+  const { key } = ctx;
   const puz = generate(seed, level);
   const { n, start, end, rowC, colC, given, solution } = puz;
   const init = initialState(puz);

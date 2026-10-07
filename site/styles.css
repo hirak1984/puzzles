@@ -94,6 +94,7 @@ button.primary:hover{filter:brightness(1.08)}
 .hashi .bridge{stroke:var(--text);stroke-width:2.5;stroke-linecap:round}
 .hashi .bridge.win{stroke:var(--accent)}
 .hashi .hint-line{stroke:var(--accent);stroke-width:9;stroke-linecap:round;opacity:.35}
+.hashi .hint-line.wrong{stroke:var(--danger)}
 .hashi .island circle{fill:var(--bg-elevated);stroke:var(--text);stroke-width:2.5}
 .hashi .island text{font:600 17px var(--font-sans);fill:var(--text);pointer-events:none}
 .hashi .island.done circle{fill:var(--accent-bg);stroke:var(--accent)}
@@ -103,6 +104,20 @@ button.primary:hover{filter:brightness(1.08)}
 .hashi .island.sel circle{stroke-width:3;stroke:var(--accent);fill:var(--accent-bg)}
 .hashi .path-hl{stroke:var(--accent);stroke-width:14;stroke-linecap:round;opacity:.28;pointer-events:none}
 .hashi .target{fill:none;stroke:var(--accent);stroke-width:2;pointer-events:none}
+
+/* Sudoku */
+.sudoku-wrap{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+.sudoku .cell{fill:var(--bg-elevated)}
+.sudoku .cell.given,.sudoku .cell.peer{fill:var(--bg-raised)}
+.sudoku .cell.hint,.sudoku .cell.sel{fill:var(--accent-bg)}
+.sudoku .gl{stroke:var(--border);stroke-width:1}
+.sudoku .gl.box{stroke:var(--border-strong);stroke-width:2.5}
+.sudoku .digit{font:400 20px var(--font-sans);fill:var(--user);pointer-events:none}
+.sudoku .digit.given{font-weight:600;fill:var(--text)}
+.sudoku .digit.bad{fill:var(--danger)}
+.keypad{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.keypad button{padding:0;min-height:44px;font-size:18px;font-weight:500;border-radius:6px;min-width:0}
+.keypad button.erase{color:var(--text-muted);display:flex;align-items:center;justify-content:center}
 
 /* Tracks */
 .tracks .cell{fill:var(--bg-elevated)}

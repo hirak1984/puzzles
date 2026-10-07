@@ -1,1 +1,1 @@
-{"private":true,"type":"module","scripts":{"test":"node tests/generate.test.mjs"}}
+{"private":true,"type":"module","scripts":{"test":"node tests/parity.test.mjs && node tests/generate.test.mjs"}}

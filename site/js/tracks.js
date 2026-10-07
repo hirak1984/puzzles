@@ -134,7 +134,9 @@ export function generate(seed, level) {
     last = { n, start, end, rowC, colC, given, solution: masks, unique: ok };
     if (!ok) continue;
     if (cfg.minimize) {
-      for (const c of shuffle(rnd, [...given.keys()])) {
+      // Ascending cell order, matching the iOS/Android apps (a Map iterates in
+      // insertion order, which the apps can't reproduce).
+      for (const c of shuffle(rnd, [...given.keys()].sort((a, b) => a - b))) {
         const m = given.get(c);
         given.delete(c);
         if (!isUnique(rowC, colC, start, end, given)) given.set(c, m);

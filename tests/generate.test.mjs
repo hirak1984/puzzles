@@ -1,5 +1,6 @@
 import * as hashi from '../site/js/hashi.js';
 import * as tracks from '../site/js/tracks.js';
+import * as sudoku from '../site/js/sudoku.js';
 import assert from 'node:assert';
 
 for (const level of Object.keys(hashi.LEVELS)) {
@@ -29,4 +30,19 @@ for (const level of Object.keys(tracks.LEVELS)) {
     assert(!tracks.status(p, st.links).solved);
   }
   console.log(`tracks ${level}: ${uniq}/10 unique, avg givens ${givens / 10}, worst ${worst}ms`);
+}
+for (const level of Object.keys(sudoku.LEVELS)) {
+  let uniq = 0, worst = 0, givens = 0;
+  for (let seed = 1; seed <= 10; seed++) {
+    const t = Date.now();
+    const p = sudoku.generate(seed, level);
+    worst = Math.max(worst, Date.now() - t);
+    if (p.unique) uniq++;
+    givens += p.givens.filter(Boolean).length;
+    assert(sudoku.status(p.givens, p.solution).solved, `sudoku ${level} ${seed} solution invalid`);
+    p.givens.forEach((g, i) => assert(!g || g === p.solution[i], 'given disagrees with solution'));
+    assert(!sudoku.status(p.givens, p.givens).solved);
+    assert.deepStrictEqual(sudoku.generate(seed, level).givens, p.givens, 'not deterministic');
+  }
+  console.log(`sudoku ${level}: ${uniq}/10 unique, avg givens ${givens / 10}, worst ${worst}ms`);
 }

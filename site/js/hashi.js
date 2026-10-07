@@ -183,14 +183,41 @@ export function generate(seed, level) {
   return { ...last, unique: false };
 }
 
+// Union-find root of every island over the edges that carry a bridge.
+function componentRoots(model, vals) {
+  const parent = model.islands.map((_, i) => i);
+  const find = (x) => { while (parent[x] !== x) x = parent[x]; return x; };
+  model.edges.forEach((e, k) => {
+    if (vals[k] <= 0) return;
+    const ra = find(e.a), rb = find(e.b);
+    if (ra !== rb) parent[ra] = rb;
+  });
+  return parent.map((_, i) => find(i));
+}
+
 // Per-island bridge totals + overall solved flag for a player's `vals`.
+// `isolated` marks islands outside the largest bridge network, but only once
+// every island's own count is satisfied (the board looks finished but is
+// split into two or more networks).
 export function status(model, vals) {
   const sums = model.islands.map(() => 0);
   model.edges.forEach((e, k) => { sums[e.a] += vals[k]; sums[e.b] += vals[k]; });
   const over = sums.map((s, i) => s > model.islands[i].n);
   const done = sums.map((s, i) => s === model.islands[i].n);
-  const solved = done.every(Boolean) && connected(model, vals);
-  return { sums, over, done, solved };
+  const allDone = done.every(Boolean);
+  const roots = componentRoots(model, vals);
+  const fullyConnected = roots.every((r) => r === roots[0]);
+  const solved = allDone && fullyConnected;
+  let isolated = roots.map(() => false);
+  if (allDone && !fullyConnected) {
+    // Largest network wins; ties go to the one seen first (same as the apps).
+    const sizes = new Map();
+    for (const r of roots) sizes.set(r, (sizes.get(r) || 0) + 1);
+    let mainRoot = null, most = -1;
+    for (const [r, n] of sizes) if (n > most) { most = n; mainRoot = r; }
+    isolated = roots.map((r) => r !== mainRoot);
+  }
+  return { sums, over, done, solved, isolated };
 }
 
 // True if placing a bridge on edge k would cross an existing one.
